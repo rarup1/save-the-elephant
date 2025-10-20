@@ -18,6 +18,36 @@ A lightweight non CRD dependent production-ready PostgreSQL Helm chart with S3 b
 - Persistent Volume provisioner support in the underlying infrastructure
 - S3-compatible storage and credentials (for backups)
 
+## Installation
+
+### Add Helm Repository
+
+```bash
+helm repo add save-the-elephant https://rarup1.github.io/save-the-elephant
+helm repo update
+```
+
+### Install the Chart
+
+```bash
+# Basic installation
+helm install my-postgres save-the-elephant/save-the-elephant
+
+# With custom values
+helm install my-postgres save-the-elephant/save-the-elephant -f values.yaml
+```
+
+### Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/rarup1/save-the-elephant.git
+cd save-the-elephant
+
+# Install the chart
+helm install my-postgres ./save-the-elephant
+```
+
 ## Getting Started
 
 ### Local Development
@@ -135,6 +165,30 @@ save-the-elephant:
     replicas: 1
 ```
 
+### Using Private Container Registries
+
+If you need to pull images from private registries, configure image pull secrets via the service account:
+
+```yaml
+serviceAccount:
+  create: true
+  imagePullSecrets:
+    - name: my-registry-secret
+    - name: backup-registry-secret
+```
+
+Create your registry secret first:
+
+```bash
+kubectl create secret docker-registry my-registry-secret \
+  --docker-server=registry.example.com \
+  --docker-username=myuser \
+  --docker-password=mypassword \
+  --docker-email=myemail@example.com
+```
+
+The service account will be used by all pods (PostgreSQL StatefulSet and backup CronJobs).
+
 ## Service Access
 
 When deployed, the chart creates the following services:
@@ -192,6 +246,19 @@ kubectl delete pvc -l app.kubernetes.io/name=save-the-elephant
 | 12.x | `postgres:12` | ⚠️ Compatible | Older version, consider upgrading |
 
 ## Helm Chart Values
+
+### Quick Reference
+
+| Section | Description |
+|---------|-------------|
+| [PostgreSQL Configuration](#postgresql-configuration) | Database image, auth, and runtime config |
+| [Replication Configuration](#replication-configuration) | Streaming replication settings |
+| [Service Configuration](#service-configuration) | Kubernetes service settings |
+| [Backup Configuration](#backup-configuration) | S3 backup settings and schedule |
+| [Service Account](#service-account-configuration) | Service account and image pull secrets |
+| [Security](#security-configuration) | Pod and container security contexts |
+| [Resources & Scheduling](#resources-and-scheduling) | Resource limits, node selection, affinity |
+| [Advanced](#advanced-configuration) | Init containers, extra volumes, environment variables |
 
 ### PostgreSQL Configuration
 
@@ -269,27 +336,74 @@ The backup image version automatically matches your PostgreSQL major version (e.
 | `backup.resources.requests.cpu` | Backup job CPU request | `100m` |
 | `backup.resources.requests.memory` | Backup job memory request | `128Mi` |
 
-### Other Configuration
+### Service Account Configuration
+
+The service account is used by all pods (PostgreSQL StatefulSet and backup CronJobs).
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `serviceAccount.create` | Create service account | `true` |
+| `serviceAccount.name` | Service account name (auto-generated if empty) | `""` |
 | `serviceAccount.annotations` | Service account annotations | `{}` |
-| `serviceAccount.name` | Service account name | `""` |
-| `podAnnotations` | Pod annotations | `{}` |
-| `podLabels` | Custom labels for pods | `{}` |
+| `serviceAccount.imagePullSecrets` | Image pull secrets for the service account | `[]` |
+
+**Note:** When `imagePullSecrets` are configured on the service account, they are automatically inherited by all pods, eliminating the need to specify them individually on each pod spec.
+
+### Security Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
 | `podSecurityContext.fsGroup` | Pod fsGroup | `999` |
 | `securityContext.runAsUser` | Container runAsUser | `999` |
 | `securityContext.runAsNonRoot` | Run as non-root | `true` |
 | `securityContext.capabilities.drop` | Capabilities to drop | `["ALL"]` |
 | `securityContext.readOnlyRootFilesystem` | Read-only root filesystem | `false` |
-| `nodeSelector` | Node selector | `{}` |
-| `tolerations` | Tolerations | `[]` |
-| `affinity` | Affinity rules | `{}` |
+
+### Resources and Scheduling
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `nodeSelector` | Node selector for pod assignment | `{}` |
+| `tolerations` | Tolerations for pod assignment | `[]` |
+| `affinity` | Affinity rules for pod assignment | `{}` |
+
+### Advanced Configuration
+
+These parameters allow for extending the chart with custom configurations.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `podAnnotations` | Additional annotations for pods | `{}` |
+| `podLabels` | Additional labels for pods | `{}` |
 | `initContainers` | Additional init containers | `[]` |
-| `extraVolumes` | Additional volumes | `[]` |
-| `extraVolumeMounts` | Additional volume mounts | `[]` |
+| `extraVolumes` | Additional volumes to add to pods | `[]` |
+| `extraVolumeMounts` | Additional volume mounts for containers | `[]` |
 | `extraEnv` | Additional environment variables | `[]` |
+
+**Example - Adding custom environment variables:**
+```yaml
+extraEnv:
+  - name: CUSTOM_VAR
+    value: "custom-value"
+  - name: SECRET_VAR
+    valueFrom:
+      secretKeyRef:
+        name: my-secret
+        key: password
+```
+
+**Example - Adding extra volumes:**
+```yaml
+extraVolumes:
+  - name: custom-config
+    configMap:
+      name: my-postgres-config
+
+extraVolumeMounts:
+  - name: custom-config
+    mountPath: /etc/postgresql/custom
+    readOnly: true
+```
 
 ## Contributing
 
