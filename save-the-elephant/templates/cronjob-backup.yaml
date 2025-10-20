@@ -59,7 +59,7 @@ spec:
                   value: {{ .Values.backup.s3.prefix | quote }}
                 {{- else }}
                 - name: S3_PREFIX
-                  value: "{{ .Release.Name }}/{{ .Release.Namespace }}"
+                  value: "release={{ .Release.Name }}/namespace={{ .Release.Namespace }}"
                 {{- end }}
                 # PostgreSQL Configuration
                 - name: POSTGRES_DATABASE

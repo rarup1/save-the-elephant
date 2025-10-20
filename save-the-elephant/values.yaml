@@ -122,8 +122,8 @@ backup:
     # S3 endpoint (for S3-compatible services like MinIO)
     endpoint: ""
     # Path prefix within the bucket
-    # If empty, defaults to: <release-name>/<namespace>/
-    # Example: with release "metadb" in namespace "default", backups go to s3://bucket/metadb/default/
+    # If empty, defaults to: release=<release-name>/namespace=<namespace>/
+    # Example: with release "metadb" in namespace "default", backups go to s3://bucket/release=metadb/namespace=default/
     prefix: ""
     # Access key ID (can also be provided via existingSecret)
     accessKeyId: ""

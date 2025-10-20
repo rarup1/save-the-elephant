@@ -46,7 +46,7 @@ Backup Configuration:
   {{- if .Values.backup.s3.prefix }}
   - S3 Prefix: {{ .Values.backup.s3.prefix }}
   {{- else }}
-  - S3 Prefix: {{ .Release.Name }}/{{ .Release.Namespace }}/
+  - S3 Prefix: release={{ .Release.Name }}/namespace={{ .Release.Namespace }}/
   {{- end }}
 
 Note: Configure S3 bucket lifecycle policies for backup retention management.

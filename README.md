@@ -257,7 +257,7 @@ The backup image version automatically matches your PostgreSQL major version (e.
 | `backup.s3.bucket` | S3 bucket name | `"postgres-backups"` |
 | `backup.s3.region` | S3 region | `"us-east-1"` |
 | `backup.s3.endpoint` | S3 endpoint (for MinIO, etc) | `""` |
-| `backup.s3.prefix` | S3 path prefix (defaults to `<release-name>/<namespace>/` if empty) | `""` |
+| `backup.s3.prefix` | S3 path prefix (defaults to `release=<release-name>/namespace=<namespace>/` if empty) | `""` |
 | `backup.s3.accessKeyId` | S3 access key ID | `""` |
 | `backup.s3.secretAccessKey` | S3 secret access key | `""` |
 | `backup.s3.existingSecret` | Use existing secret for S3 credentials | `""` |
