@@ -18,6 +18,36 @@ A lightweight non CRD dependent production-ready PostgreSQL Helm chart with S3 b
 - Persistent Volume provisioner support in the underlying infrastructure
 - S3-compatible storage and credentials (for backups)
 
+## Installation
+
+### Add Helm Repository
+
+```bash
+helm repo add save-the-elephant https://rarup1.github.io/save-the-elephant
+helm repo update
+```
+
+### Install the Chart
+
+```bash
+# Basic installation
+helm install my-postgres save-the-elephant/save-the-elephant
+
+# With custom values
+helm install my-postgres save-the-elephant/save-the-elephant -f values.yaml
+```
+
+### Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/rarup1/save-the-elephant.git
+cd save-the-elephant
+
+# Install the chart
+helm install my-postgres ./save-the-elephant
+```
+
 ## Getting Started
 
 ### Local Development
