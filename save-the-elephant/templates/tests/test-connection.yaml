@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "save-the-elephant.fullname" . }}-test-connection"
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: postgres-test
+      image: postgres:{{ .Values.postgresql.image.tag }}
+      command:
+        - pg_isready
+      args:
+        - -h
+        - {{ include "save-the-elephant.fullname" . }}-postgresql
+        - -p
+        - "5432"
+        - -U
+        - {{ .Values.postgresql.auth.username }}
+  restartPolicy: Never

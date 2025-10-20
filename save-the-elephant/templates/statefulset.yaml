@@ -1,0 +1,241 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-postgresql
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  serviceName: {{ include "save-the-elephant.fullname" . }}-postgresql-headless
+  {{- if .Values.replication.enabled }}
+  replicas: {{ add .Values.replication.replicas 1 }}
+  {{- else }}
+  replicas: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "save-the-elephant.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgresql
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-postgresql.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "save-the-elephant.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "save-the-elephant.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.replication.enabled }}
+        - name: init-replication
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Init container starting..."
+
+              # Get pod ordinal from hostname
+              HOSTNAME=$(hostname)
+              ORDINAL=${HOSTNAME##*-}
+              echo "Pod ordinal: $ORDINAL"
+
+              # Set up environment
+              export PGDATA="/var/lib/postgresql/data/pgdata"
+              export POSTGRES_USER="{{ .Values.postgresql.auth.username }}"
+              export POSTGRES_PASSWORD="$POSTGRES_PASSWORD_ENV"
+              export REPLICATION_USER="{{ .Values.postgresql.auth.replicationUsername }}"
+              export REPLICATION_PASSWORD="$REPLICATION_PASSWORD_ENV"
+
+              if [ "$ORDINAL" = "0" ]; then
+                echo "This is the primary (pod-0)"
+                echo "Primary will be initialized by PostgreSQL entrypoint"
+              else
+                echo "This is replica pod-$ORDINAL"
+
+                # Wait for primary to be ready
+                PRIMARY_HOST="{{ include "save-the-elephant.fullname" . }}-postgresql-0.{{ include "save-the-elephant.fullname" . }}-postgresql-headless.{{ .Release.Namespace }}.svc.cluster.local"
+                echo "Waiting for primary at $PRIMARY_HOST..."
+
+                until pg_isready -h "$PRIMARY_HOST" -p 5432 -U "$POSTGRES_USER" 2>/dev/null; do
+                  echo "Primary not ready, waiting..."
+                  sleep 2
+                done
+
+                echo "Primary is ready!"
+
+                # Check if already initialized
+                if [ -s "$PGDATA/PG_VERSION" ]; then
+                  echo "Replica already initialized, skipping pg_basebackup"
+                else
+                  echo "Initializing replica from primary..."
+
+                  # Remove any existing data
+                  rm -rf "$PGDATA"/* || true
+
+                  # Create base backup from primary
+                  PGPASSWORD="$REPLICATION_PASSWORD" pg_basebackup \
+                    -h "$PRIMARY_HOST" \
+                    -D "$PGDATA" \
+                    -U "$REPLICATION_USER" \
+                    -v \
+                    -P \
+                    -W \
+                    -R
+
+                  echo "Replica initialization complete"
+                fi
+              fi
+
+              echo "Init container finished"
+          env:
+            - name: POSTGRES_PASSWORD_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "save-the-elephant.secretName" . }}
+                  key: postgres-password
+            - name: REPLICATION_PASSWORD_ENV
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "save-the-elephant.secretName" . }}
+                  key: replication-password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+        {{- end }}
+        {{- with .Values.initContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: postgresql
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "save-the-elephant.secretName" . }}
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.auth.database | quote }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            {{- if .Values.replication.enabled }}
+            - name: REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "save-the-elephant.secretName" . }}
+                  key: replication-password
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            {{- if .Values.replication.enabled }}
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d/01-init-replication.sh
+              subPath: 01-init-replication.sh
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgresql.auth.username }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgresql.auth.username }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.replication.enabled }}
+        - name: init-script
+          configMap:
+            name: {{ include "save-the-elephant.fullname" . }}-init-script
+            defaultMode: 0755
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.postgresql.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.postgresql.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.postgresql.persistence.accessMode }}
+        {{- if .Values.postgresql.persistence.storageClass }}
+        storageClassName: {{ .Values.postgresql.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.persistence.size }}
+  {{- else }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.postgresql.persistence.storageClass }}
+        storageClassName: {{ .Values.postgresql.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: 1Gi
+  {{- end }}

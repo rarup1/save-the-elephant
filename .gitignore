@@ -1,0 +1,26 @@
+# Helm package files
+*.tgz
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# Logs
+*.log
+.claude
+
+# local environment files
+.local/
+
+

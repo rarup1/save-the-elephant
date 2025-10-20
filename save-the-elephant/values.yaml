@@ -1,0 +1,204 @@
+# Default values for save-the-elephant
+# This is a YAML-formatted file.
+
+# PostgreSQL Configuration
+postgresql:
+  # PostgreSQL image configuration
+  image:
+    repository: postgres
+    tag: "17.4"
+    pullPolicy: IfNotPresent
+
+  # Database credentials
+  auth:
+    # Username for the PostgreSQL database
+    username: postgres
+    # Password for the PostgreSQL database (leave empty to generate random password)
+    password: ""
+    # Name of the database to create
+    database: postgres
+    # Replication username (used when replication is enabled)
+    replicationUsername: replicator
+    # Replication password (leave empty to generate random password)
+    replicationPassword: ""
+    # Existing secret with PostgreSQL credentials
+    # Must contain keys: postgres-password, replication-password
+    existingSecret: ""
+
+  # PostgreSQL configuration parameters
+  config:
+    # Maximum number of connections
+    maxConnections: "100"
+    # Shared buffers (recommended: 25% of RAM)
+    sharedBuffers: "128MB"
+    # Effective cache size
+    effectiveCacheSize: "512MB"
+    # WAL level (must be 'replica' or 'logical' for replication)
+    walLevel: "replica"
+    # Max WAL senders (number of standby servers + backups)
+    maxWalSenders: "10"
+    # Keep WAL segments for replication
+    walKeepSize: "1GB"
+
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Persistence configuration
+  persistence:
+    enabled: true
+    # Storage class for PVCs (leave empty to use cluster default)
+    # Examples: "standard", "gp2", "fast-ssd", etc.
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+
+# Replication Configuration (Optional)
+replication:
+  # Enable PostgreSQL streaming replication
+  enabled: false
+  # Number of read replicas (must be >= 1 if enabled)
+  replicas: 1
+  # Synchronous replication mode
+  # Options: "off" (async), "on" (sync with one replica), "remote_write", "remote_apply"
+  synchronousCommit: "off"
+  # Read replica resources (if different from primary)
+  resources: {}
+    # limits:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # requests:
+    #   cpu: 250m
+    #   memory: 256Mi
+
+# Service Configuration
+service:
+  # Primary service (read-write)
+  primary:
+    type: ClusterIP
+    port: 5432
+    annotations: {}
+
+  # Read-only service (only created when replication is enabled)
+  readOnly:
+    enabled: true
+    type: ClusterIP
+    port: 5432
+    annotations: {}
+
+# S3 Backup Configuration
+backup:
+  # Enable scheduled backups to S3
+  # If enabled an existing secret with S3 credentials must be provided or endpoint, accessKeyId and secretAccessKey must be set below
+  enabled: false
+
+  # Backup schedule (cron format)
+  # Default: Every day at 2 AM
+  schedule: "0 2 * * *"
+
+  # Number of successful backup jobs to retain
+  successfulJobsHistoryLimit: 3
+
+  # Number of failed backup jobs to retain
+  failedJobsHistoryLimit: 1
+
+  # TTL (time to live) for completed backup jobs in seconds
+  # Jobs will be automatically deleted this many seconds after finishing
+  # 300 seconds = 5 minutes
+  ttlSecondsAfterFinished: 300
+
+  # S3 configuration
+  s3:
+    # S3 bucket name
+    bucket: "postgres-backups"
+    # S3 region
+    region: "us-east-1"
+    # S3 endpoint (for S3-compatible services like MinIO)
+    endpoint: ""
+    # Path prefix within the bucket
+    # If empty, defaults to: <release-name>/<namespace>/
+    # Example: with release "metadb" in namespace "default", backups go to s3://bucket/metadb/default/
+    prefix: ""
+    # Access key ID (can also be provided via existingSecret)
+    accessKeyId: ""
+    # Secret access key (can also be provided via existingSecret)
+    secretAccessKey: ""
+    # Existing secret with S3 credentials
+    # Must contain keys: access-key-id, secret-access-key, endpoint (if not using AWS)
+    existingSecret: ""
+
+  # Backup container image
+  # This image contains PostgreSQL tools and AWS CLI pre-installed
+  # Tag is automatically set to match PostgreSQL major version (leave empty for auto-detection)
+  image:
+    repository: rarup1/postgres-backup-s3
+    tag: ""
+    pullPolicy: IfNotPresent
+
+  # Resources for backup job
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# ServiceAccount
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels (applied to all pods in the StatefulSet)
+podLabels: {}
+  # Example:
+  # environment: production
+  # team: database
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 999
+
+# Security context
+securityContext:
+  runAsUser: 999
+  runAsNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Init containers (e.g., for waiting for dependencies)
+initContainers: []
+
+# Additional volumes
+extraVolumes: []
+
+# Additional volume mounts
+extraVolumeMounts: []
+
+# Additional environment variables
+extraEnv: []

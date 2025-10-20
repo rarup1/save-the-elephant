@@ -1,0 +1,68 @@
+# Headless service for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-postgresql-headless
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+      protocol: TCP
+  selector:
+    {{- include "save-the-elephant.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+---
+# Primary service (read-write)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-postgresql
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+    app.kubernetes.io/component: primary
+  {{- with .Values.service.primary.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.primary.type }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.service.primary.port }}
+      targetPort: postgresql
+      protocol: TCP
+  selector:
+    {{- include "save-the-elephant.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+    statefulset.kubernetes.io/pod-name: {{ include "save-the-elephant.fullname" . }}-postgresql-0
+---
+{{- if and .Values.replication.enabled .Values.service.readOnly.enabled }}
+# Read-only service (load balanced across replicas)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-postgresql-readonly
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+    app.kubernetes.io/component: replica
+  {{- with .Values.service.readOnly.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.readOnly.type }}
+  ports:
+    - name: postgresql
+      port: {{ .Values.service.readOnly.port }}
+      targetPort: postgresql
+      protocol: TCP
+  selector:
+    {{- include "save-the-elephant.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: postgresql
+{{- end }}

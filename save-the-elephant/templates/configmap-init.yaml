@@ -1,0 +1,45 @@
+{{- if .Values.replication.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-init-script
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+data:
+  01-init-replication.sh: |
+    #!/bin/bash
+    set -e
+
+    # This script runs only on the primary during first initialization
+    # It's executed by the PostgreSQL docker-entrypoint-initdb.d mechanism
+
+    echo "Setting up replication user..."
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        CREATE USER {{ .Values.postgresql.auth.replicationUsername }} WITH REPLICATION ENCRYPTED PASSWORD '$REPLICATION_PASSWORD';
+    EOSQL
+
+    echo "Replication user created successfully"
+
+    # Update pg_hba.conf for replication
+    cat >> "$PGDATA/pg_hba.conf" <<-EOF
+    # Replication connections
+    host    replication     {{ .Values.postgresql.auth.replicationUsername }}     0.0.0.0/0               md5
+    host    replication     {{ .Values.postgresql.auth.replicationUsername }}     ::0/0                   md5
+    EOF
+
+    # Update postgresql.conf for replication
+    cat >> "$PGDATA/postgresql.conf" <<-EOF
+    # Replication settings
+    wal_level = replica
+    max_wal_senders = {{ .Values.postgresql.config.maxWalSenders }}
+    wal_keep_size = {{ .Values.postgresql.config.walKeepSize }}
+    hot_standby = on
+    {{- if ne .Values.replication.synchronousCommit "off" }}
+    synchronous_commit = {{ .Values.replication.synchronousCommit }}
+    synchronous_standby_names = '*'
+    {{- end }}
+    EOF
+
+    echo "Replication configuration complete"
+{{- end }}
