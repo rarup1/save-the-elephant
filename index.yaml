@@ -1,0 +1,27 @@
+apiVersion: v1
+entries:
+  save-the-elephant:
+  - apiVersion: v2
+    appVersion: "17.4"
+    created: "2025-10-20T14:44:57.33005+01:00"
+    description: A PostgreSQL Helm chart with S3 backup capabilities and optional
+      replication
+    digest: 99770e6ce0389ecce4a7fe058485ae0a7ef51d2a5ec32439269b3ac85a6e38b1
+    home: https://github.com/rarup1/save-the-elephant
+    icon: https://www.postgresql.org/media/img/about/press/elephant.png
+    keywords:
+    - postgresql
+    - database
+    - sql
+    - backup
+    - s3
+    maintainers:
+    - name: Rupert Arup
+    name: save-the-elephant
+    sources:
+    - https://github.com/postgres/postgres
+    type: application
+    urls:
+    - https://rarup1.github.io/save-the-elephant/save-the-elephant-0.1.0.tgz
+    version: 0.1.0
+generated: "2025-10-20T14:44:57.329049+01:00"
