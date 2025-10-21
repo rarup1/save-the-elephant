@@ -245,6 +245,7 @@ kubectl delete pvc -l app.kubernetes.io/name=save-the-elephant
 | 13.x | `postgres:13` | ✅ Compatible | PostgreSQL 13 series |
 | 12.x | `postgres:12` | ⚠️ Compatible | Older version, consider upgrading |
 
+
 ## Helm Chart Values
 
 ### Quick Reference
@@ -408,6 +409,10 @@ extraVolumeMounts:
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## License
 
