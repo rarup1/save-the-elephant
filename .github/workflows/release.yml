@@ -34,3 +34,28 @@ jobs:
           charts_dir: .  # Look for charts in the root directory (finds save-the-elephant/)
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Update README on gh-pages
+        run: |
+          # Fetch the gh-pages branch
+          git fetch origin gh-pages:gh-pages
+
+          # Checkout gh-pages branch
+          git checkout gh-pages
+
+          # Copy README.md from main branch (current tag should be on main)
+          git checkout ${{ github.ref_name }} -- README.md
+
+          # Check if there are changes
+          if git diff --quiet HEAD -- README.md; then
+            echo "No changes to README.md"
+          else
+            # Commit and push the changes
+            git add README.md
+            git commit -m "Update README.md from release ${{ github.ref_name }}"
+            git push origin gh-pages
+            echo "README.md updated on gh-pages"
+          fi
+
+          # Go back to the original branch/tag
+          git checkout -
