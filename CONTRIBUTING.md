@@ -326,25 +326,45 @@ make clean
 
 Before submitting a PR, ensure:
 
-1. **Chart lints successfully:**
+1. **Chart installs successfully:**
    ```bash
-   helm lint save-the-elephant/
+   # Basic deployment (uses values from save-the-elephant/values.yaml)
+   helm upgrade --install test_release ./save-the-elephant \
+     --namespace default \
+     --create-namespace \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
-2. **Chart installs successfully:**
+2. **Chart upgrades work:**
    ```bash
-   helm install test-release save-the-elephant/ -f examples/values.yaml
+   # Make your changes, then upgrade
+   helm upgrade test_release ./save-the-elephant \
+     --namespace default \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
-3. **Chart upgrades work:**
+3. **Test with replication (if applicable):**
    ```bash
-   helm upgrade test-release save-the-elephant/ -f examples/values.yaml
+   # Deploy with replication enabled
+   helm upgrade --install test_release ./save-the-elephant \
+     -f examples/replication.values.yaml \
+     --namespace default \
+     --create-namespace \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
 4. **Documentation is updated:**
-   - Update README.md if adding new features
+   - Update README.md if adding new features and values parameters
    - Update values.yaml comments
    - Add examples if needed
+
+**Note:** Automated CI/CD testing and linting will be added soon. Currently, linting and validation will happen during the PR review process.
 
 ### Commit Message Guidelines
 
