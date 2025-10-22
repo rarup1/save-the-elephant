@@ -159,6 +159,11 @@ spec:
               mountPath: /docker-entrypoint-initdb.d/01-init-replication.sh
               subPath: 01-init-replication.sh
             {{- end }}
+            {{- if .Values.postgresql.hba.enabled }}
+            - name: hba-config
+              mountPath: /docker-entrypoint-initdb.d/00-setup-hba.sh
+              subPath: 00-setup-hba.sh
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -191,6 +196,12 @@ spec:
         - name: init-script
           configMap:
             name: {{ include "save-the-elephant.fullname" . }}-init-script
+            defaultMode: 0755
+        {{- end }}
+        {{- if .Values.postgresql.hba.enabled }}
+        - name: hba-config
+          configMap:
+            name: {{ include "save-the-elephant.fullname" . }}-hba
             defaultMode: 0755
         {{- end }}
         {{- with .Values.extraVolumes }}

@@ -40,6 +40,16 @@ postgresql:
     # Keep WAL segments for replication
     walKeepSize: "1GB"
 
+  # Host-Based Authentication (pg_hba.conf) configuration
+  # Controls client authentication for PostgreSQL connections
+  hba:
+    # Enable custom pg_hba.conf configuration
+    enabled: true
+    # Authentication mode: "password" or "trust"
+    # - password: Requires SCRAM-SHA-256 password authentication for network connections
+    # - trust: Allows connections without password (use only in secure test environments)
+    authMode: "password"
+
   # Resource limits and requests
   resources:
     limits:
