@@ -21,12 +21,8 @@ data:
 
     echo "Replication user created successfully"
 
-    # Update pg_hba.conf for replication
-    cat >> "$PGDATA/pg_hba.conf" <<-EOF
-    # Replication connections
-    host    replication     {{ .Values.postgresql.auth.replicationUsername }}     0.0.0.0/0               md5
-    host    replication     {{ .Values.postgresql.auth.replicationUsername }}     ::0/0                   md5
-    EOF
+    # Note: pg_hba.conf is configured by the HBA init script (00-setup-hba.sh) if enabled
+    # Otherwise, the default PostgreSQL configuration will be used
 
     # Update postgresql.conf for replication
     cat >> "$PGDATA/postgresql.conf" <<-EOF

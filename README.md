@@ -126,6 +126,23 @@ replication:
   synchronousCommit: "off"
 ```
 
+### Configure Authentication (pg_hba.conf)
+
+Control client authentication with custom pg_hba.conf settings:
+
+```yaml
+postgresql:
+  hba:
+    enabled: true
+    authMode: "password"  # or "trust" for test environments
+```
+
+**Authentication Modes:**
+- `password` - Requires SCRAM-SHA-256 password authentication for all network connections (recommended for production)
+- `trust` - Allows connections without passwords (use only in secure test environments)
+
+When `authMode: "password"` is set, all network connections (including replication) require password authentication. The chart automatically configures proper authentication for replication users when replication is enabled.
+
 ### Custom Resources
 
 ```yaml
@@ -279,6 +296,8 @@ kubectl delete pvc -l app.kubernetes.io/name=save-the-elephant
 | `postgresql.config.walLevel` | WAL level (must be 'replica' for replication) | `"replica"` |
 | `postgresql.config.maxWalSenders` | Max WAL senders | `"10"` |
 | `postgresql.config.walKeepSize` | WAL keep size | `"1GB"` |
+| `postgresql.hba.enabled` | Enable custom pg_hba.conf configuration | `true` |
+| `postgresql.hba.authMode` | Authentication mode: `password` (SCRAM-SHA-256) or `trust` (no password) | `"password"` |
 | `postgresql.resources.limits.cpu` | CPU limit | `1000m` |
 | `postgresql.resources.limits.memory` | Memory limit | `1Gi` |
 | `postgresql.resources.requests.cpu` | CPU request | `250m` |
