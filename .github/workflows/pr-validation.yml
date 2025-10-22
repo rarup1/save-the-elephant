@@ -16,7 +16,7 @@ on:
 
 jobs:
   lint:
-    name: Helm Lint
+    name: Lint Helm Chart
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -43,7 +43,7 @@ jobs:
           echo "✅ Chart version format is valid: $VERSION"
 
   template:
-    name: Helm Template
+    name: Render Example Helm Templates
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,7 +53,7 @@ jobs:
           - name: "With Replication"
             values: "-f examples/replication.values.yaml"
           - name: "With Backup"
-            values: "-f examples/backup.values.yaml"
+            values: "-f examples/replication-and-backup.values.yaml"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,7 +70,7 @@ jobs:
           echo "✅ Template rendered successfully for ${{ matrix.scenario.name }}"
 
   install-test:
-    name: Install Test
+    name: Test Deployment on Kind Cluster
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -111,7 +111,7 @@ jobs:
           helm uninstall test-release --namespace default || true
 
   version-check:
-    name: Version Consistency
+    name: Verify Version Semantics
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
