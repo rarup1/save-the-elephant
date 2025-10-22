@@ -172,11 +172,25 @@ jobs:
     steps:
       - name: Check results
         run: |
-          if [ "${{ needs.lint.result }}" != "success" ] || \
-             [ "${{ needs.template.result }}" != "success" ] || \
-             [ "${{ needs.install-test.result }}" != "success" ] || \
-             [ "${{ needs.version-check.result }}" != "success" ]; then
+          # Check each job - allow skipped (for conditional jobs like version-check)
+          LINT="${{ needs.lint.result }}"
+          TEMPLATE="${{ needs.template.result }}"
+          INSTALL="${{ needs.install-test.result }}"
+          VERSION="${{ needs.version-check.result }}"
+
+          echo "Job Results:"
+          echo "  Lint: $LINT"
+          echo "  Template: $TEMPLATE"
+          echo "  Install Test: $INSTALL"
+          echo "  Version Check: $VERSION"
+
+          # Fail if any job failed (skipped is OK for conditional jobs)
+          if [ "$LINT" == "failure" ] || \
+             [ "$TEMPLATE" == "failure" ] || \
+             [ "$INSTALL" == "failure" ] || \
+             [ "$VERSION" == "failure" ]; then
             echo "❌ One or more validation checks failed"
             exit 1
           fi
+
           echo "✅ All validation checks passed!"
