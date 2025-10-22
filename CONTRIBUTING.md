@@ -1,129 +1,428 @@
 # Contributing to Save The Elephant
 
-Thank you for considering contributing to Save The Elephant! This document provides guidelines for contributing to this Helm chart.
+Thank you for your interest in contributing to the Save The Elephant Helm chart! This document provides guidelines for contributing to this project.
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [Branch Naming Convention](#branch-naming-convention)
+- [PR Submission Process](#pr-submission-process)
+- [PR Review & Labeling](#pr-review--labeling)
+- [Release Process](#release-process)
+- [Development Workflow](#development-workflow)
 
 ## Getting Started
 
-1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/save-the-elephant.git`
-3. Create a feature branch: `git checkout -b feature/your-feature-name`
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally:
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/save-the-elephant.git
+   cd save-the-elephant
+   ```
+3. **Add upstream remote**:
+   ```bash
+   git remote add upstream https://github.com/rarup1/save-the-elephant.git
+   ```
+4. **Keep your fork synced**:
+   ```bash
+   git fetch upstream
+   git checkout main
+   git merge upstream/main
+   ```
 
-## Development Setup
+## Branch Naming Convention
 
-### Prerequisites
+All branches must use one of the following prefixes:
 
-- Docker or Podman
-- Minikube
-- kubectl
-- Helm 3.0+
-- Make
+### Core Prefixes
+
+| Prefix | Purpose | Example |
+|--------|---------|---------|
+| `feature/` | New features or enhancements | `feature/add-ingress-support` |
+| `bugfix/` | Bug fixes | `bugfix/fix-replication-timeout` |
+| `hotfix/` | Urgent production fixes | `hotfix/security-patch` |
+| `release/` | Release preparation branches | `release/v0.3.0` |
+
+### Supporting Prefixes
+
+| Prefix | Purpose | Example |
+|--------|---------|---------|
+| `docs/` | Documentation changes | `docs/update-backup-guide` |
+| `chore/` | Maintenance tasks, dependency updates | `chore/update-dependencies` |
+| `ci/` | CI/CD pipeline changes | `ci/add-lint-check` |
+| `refactor/` | Code restructuring without feature changes | `refactor/simplify-hba-config` |
+| `test/` | Test additions or modifications | `test/add-backup-tests` |
+| `perf/` | Performance improvements | `perf/optimize-startup` |
+
+### Branch Naming Examples
+
+✅ **Good:**
+- `feature/add-prometheus-metrics`
+- `bugfix/fix-backup-schedule`
+- `docs/improve-installation-guide`
+
+❌ **Bad:**
+- `my-changes`
+- `fix-stuff`
+- `update`
+
+## PR Submission Process
+
+### 1. Create Your Branch
+
+```bash
+# Start from updated main branch
+git checkout main
+git pull upstream main
+
+# Create your feature branch with proper prefix
+git checkout -b feature/add-ingress-support
+```
+
+### 2. Make Your Changes
+
+- Follow existing code style and conventions
+- Update documentation if needed
+- Test your changes locally (use `make` commands if available)
+- Commit with clear, descriptive messages
+
+### 3. Submit Pull Request
+
+When submitting a PR, include the following information:
+
+#### PR Title Format
+```
+[TYPE] Brief description of changes
+```
+
+Examples:
+- `[FEATURE] Add Ingress support`
+- `[BUGFIX] Fix replication authentication issue`
+- `[DOCS] Update README with new configuration options`
+
+#### PR Description Template
+
+```markdown
+## Change Type
+<!-- Check one -->
+- [ ] Major (breaking changes)
+- [ ] Minor (new features, backwards compatible)
+- [ ] Patch (bug fixes, no new features)
+
+## Description
+<!-- Describe your changes in detail -->
+
+## Motivation and Context
+<!-- Why is this change required? What problem does it solve? -->
+
+## Testing
+<!-- Describe how you tested your changes -->
+- [ ] Tested locally with minikube/kind
+- [ ] Tested with replication enabled
+- [ ] Updated documentation
+- [ ] Added/updated tests (if applicable)
+
+## Breaking Changes
+<!-- List any breaking changes and migration steps -->
+- None
+
+## Related Issues
+<!-- Link to related issues: Fixes #123, Closes #456 -->
+
+## Checklist
+- [ ] Chart version bumped (if chart changes)
+- [ ] CHANGELOG.md updated (for release PRs)
+- [ ] Documentation updated
+- [ ] Branch name follows convention
+```
+
+### 4. Keep Your PR Updated
+
+```bash
+# Sync with upstream main
+git fetch upstream
+git rebase upstream/main
+
+# Force push to your branch (only for your fork!)
+git push -f origin feature/add-ingress-support
+```
+
+## PR Review & Labeling
+
+**For Maintainers:** After a PR is submitted, add appropriate labels:
+
+### Version Impact Labels
+
+| Label | Usage | Example |
+|-------|-------|---------|
+| `major` | Breaking changes (v1.0.0 → v2.0.0) | Removing deprecated features |
+| `minor` | New features, backwards compatible (v1.0.0 → v1.1.0) | Adding new configuration options |
+| `patch` | Bug fixes, no new features (v1.0.0 → v1.0.1) | Fixing a broken feature |
+
+### Release Target Labels
+
+| Label | Usage |
+|-------|-------|
+| `release:next` | Include in next scheduled release |
+| `release:v0.3.0` | Target specific release version |
+
+### Type Labels
+
+| Label | Usage |
+|-------|-------|
+| `bug` | Bug fixes |
+| `feature` | New features |
+| `enhancement` | Improvements to existing features |
+| `documentation` | Documentation changes |
+| `dependencies` | Dependency updates |
+
+## Release Process
+
+Releases are managed by maintainers following this process:
+
+### 1. Continuous Integration to Main
+
+PRs are merged to `main` continuously after review and approval:
+
+```bash
+feature/add-metrics → main ✓
+bugfix/fix-tls → main ✓
+docs/update-readme → main ✓
+```
+
+### 2. Create Release Branch
+
+When ready to release, create a short-lived release branch:
+
+```bash
+# Start from latest main
+git checkout main
+git pull
+
+# Create release branch with version number
+git checkout -b release/v0.3.0
+```
+
+### 3. Release Preparation
+
+Perform the following tasks in the release branch:
+
+#### Update Chart Version
+```yaml
+# save-the-elephant/Chart.yaml
+version: 0.3.0  # Bump from 0.2.0
+```
+
+#### Update CHANGELOG.md
+```markdown
+## [0.3.0] - 2024-01-15
+
+### Chart Changes
+
+#### Added
+- New Ingress support with TLS configuration
+- Custom ServiceMonitor for Prometheus metrics
+
+#### Changed
+- Improved backup schedule configuration
+- Enhanced documentation
+
+#### Fixed
+- Replication authentication timeout issue
+
+---
+
+### General Repository Updates
+
+#### CI/CD
+- Added automated linting checks
+```
+
+#### Update Version References
+
+Update any hardcoded version references in README.md or examples:
+```bash
+# Find version references
+grep -r "0.2.0" README.md examples/
+```
+
+### 4. Create Release PR
+
+```bash
+# Commit release prep changes
+git add save-the-elephant/Chart.yaml CHANGELOG.md README.md
+git commit -m "Prepare release v0.3.0"
+
+# Push release branch
+git push origin release/v0.3.0
+```
+
+Create a PR from `release/v0.3.0` → `main` with title: `Release v0.3.0`
+
+### 5. Merge and Tag
+
+Once the release PR is approved:
+
+```bash
+# Merge to main (via GitHub)
+# Then tag the merge commit locally
+
+git checkout main
+git pull
+
+# Create annotated tag
+git tag -a v0.3.0 -m "Release v0.3.0
+
+## Chart Changes (v0.2.0 → v0.3.0)
+
+### Added
+- Feature descriptions
+
+### Changed
+- Change descriptions
+
+### Fixed
+- Bug fix descriptions
+
+---
+
+## General Repository Updates
+
+### CI/CD
+- Pipeline improvements
+"
+
+# Push tag to trigger release workflow
+git push origin v0.3.0
+```
+
+### 6. Automated Publishing
+
+The GitHub Actions workflow automatically:
+1. Packages the Helm chart
+2. Creates a GitHub Release
+3. Updates the Helm chart repository index
+4. Syncs README.md to GitHub Pages
+
+## Development Workflow
 
 ### Local Development
 
 ```bash
-# Start minikube and deploy
+# Install dependencies
+make setup  # If Makefile is available
+
+# Deploy locally for testing
 make full-deploy
 
-# Make changes to the chart...
+# Deploy with replication
+make full-deploy-replication
 
-# Test your changes
-make lint
-make deploy
-
-# Check status
-make status
-make logs
+# Clean up
+make clean
 ```
 
-## Testing
+### Testing Changes
 
-Before submitting a pull request, ensure:
+Before submitting a PR, ensure:
 
-1. **Helm lint passes**:
+1. **Chart installs successfully:**
    ```bash
-   make lint
+   # Basic deployment (uses values from save-the-elephant/values.yaml)
+   helm upgrade --install test_release ./save-the-elephant \
+     --namespace default \
+     --create-namespace \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
-2. **Chart deploys successfully**:
+2. **Chart upgrades work:**
    ```bash
-   make clean
-   make deploy
+   # Make your changes, then upgrade
+   helm upgrade test_release ./save-the-elephant \
+     --namespace default \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
-3. **Replication works** (if making replication changes):
+3. **Test with replication (if applicable):**
    ```bash
-   make deploy-replication
-   make check-replication
+   # Deploy with replication enabled
+   helm upgrade --install test_release ./save-the-elephant \
+     -f examples/replication.values.yaml \
+     --namespace default \
+     --create-namespace \
+     --atomic \
+     --wait \
+     --timeout 5m
    ```
 
-4. **Documentation is updated** if you've changed configuration options
+4. **Documentation is updated:**
+   - Update README.md if adding new features and values parameters
+   - Update values.yaml comments
+   - Add examples if needed
 
-## Making Changes
+**Note:** Automated CI/CD testing and linting will be added soon. Currently, linting and validation will happen during the PR review process.
 
-### Chart Changes
+### Commit Message Guidelines
 
-- Update templates in `save-the-elephant/templates/`
-- Update default values in `save-the-elephant/values.yaml`
-- Update `Chart.yaml` version if making changes:
-  - Patch version (0.1.X) for bug fixes
-  - Minor version (0.X.0) for new features
-  - Major version (X.0.0) for breaking changes
+Use clear, descriptive commit messages:
 
-### Documentation Changes
-
-- Update `README.md` for significant changes
-- Update `QUICKSTART.md` if changing installation steps
-- Update example files in `examples/` directory
-
-## Commit Guidelines
-
-- Use clear, descriptive commit messages
-- Reference issue numbers when applicable
-- Keep commits focused on a single change
-
-Example:
+**Format:**
 ```
-Add support for custom PostgreSQL parameters
+<type>: <subject>
 
-- Allow users to pass custom postgresql.conf parameters
-- Update values.yaml with new configuration section
-- Add documentation for custom parameters
+<body>
 
-Fixes #123
+<footer>
 ```
 
-## Pull Request Process
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `chore`: Maintenance tasks
+- `refactor`: Code restructuring
+- `test`: Adding/updating tests
+- `ci`: CI/CD changes
 
-1. Update documentation for any changed functionality
-2. Add or update examples if needed
-3. Ensure all tests pass (`make lint`, `make deploy`)
-4. Update CHANGELOG.md (if present) with your changes
-5. Submit pull request with clear description of changes
+**Examples:**
 
-### PR Title Format
+```
+feat: add Ingress support with TLS configuration
 
-- `feat: Add new feature`
-- `fix: Fix bug description`
-- `docs: Update documentation`
-- `chore: Update dependencies`
-- `test: Add tests`
+Add configurable Ingress resource with optional TLS support.
+Includes examples for both HTTP and HTTPS configurations.
 
-## Code Review
+Closes #123
+```
 
-All submissions require review. We'll review your PR and may request changes before merging.
+```
+fix: resolve replication authentication timeout
 
-## Questions?
+The replication init container was timing out when waiting for
+the primary pod. Updated to use the primary service instead of
+headless service for initial connectivity check.
 
-Feel free to open an issue for:
-- Bug reports
-- Feature requests
-- Questions about usage
-- Documentation improvements
+Fixes #456
+```
+
+## Questions or Issues?
+
+- **Questions:** Open a [GitHub Discussion](https://github.com/rarup1/save-the-elephant/discussions)
+- **Bug Reports:** Open a [GitHub Issue](https://github.com/rarup1/save-the-elephant/issues)
+- **Feature Requests:** Open a [GitHub Issue](https://github.com/rarup1/save-the-elephant/issues) with the `enhancement` label
+
+## Code of Conduct
+
+Be respectful and constructive in all interactions. We aim to foster an inclusive and welcoming community.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project.
+By contributing to Save The Elephant, you agree that your contributions will be licensed under the same license as the project.
 
-## Thank You!
+---
 
-Your contributions make this project better for everyone!
+Thank you for contributing! 🐘
