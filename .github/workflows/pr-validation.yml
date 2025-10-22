@@ -1,0 +1,182 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'save-the-elephant/**'
+      - '.github/workflows/**'
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'save-the-elephant/**'
+      - '.github/workflows/**'
+
+jobs:
+  lint:
+    name: Helm Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Lint Helm chart
+        run: |
+          helm lint save-the-elephant/
+
+      - name: Check Chart.yaml version format
+        run: |
+          VERSION=$(grep "^version:" save-the-elephant/Chart.yaml | awk '{print $2}')
+          if ! echo "$VERSION" | grep -Pq '^\d+\.\d+\.\d+$'; then
+            echo "❌ Chart version must follow semantic versioning (e.g., 0.1.0)"
+            exit 1
+          fi
+          echo "✅ Chart version format is valid: $VERSION"
+
+  template:
+    name: Helm Template
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scenario:
+          - name: "Basic"
+            values: ""
+          - name: "With Replication"
+            values: "-f examples/replication.values.yaml"
+          - name: "With Backup"
+            values: "-f examples/backup.values.yaml"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Template chart - ${{ matrix.scenario.name }}
+        run: |
+          echo "Testing scenario: ${{ matrix.scenario.name }}"
+          helm template test-release save-the-elephant/ ${{ matrix.scenario.values }} > /dev/null
+          echo "✅ Template rendered successfully for ${{ matrix.scenario.name }}"
+
+  install-test:
+    name: Install Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: Set up kind
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: test-cluster
+          wait: 120s
+
+      - name: Install chart
+        run: |
+          helm install test-release save-the-elephant/ \
+            --namespace default \
+            --wait \
+            --timeout 3m
+          echo "✅ Chart installed successfully"
+
+      - name: Verify deployment
+        run: |
+          kubectl get statefulset -n default
+          kubectl get pods -n default
+          kubectl get svc -n default
+
+          # Wait for StatefulSet to be ready
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=save-the-elephant --timeout=2m -n default
+          echo "✅ Deployment verified successfully"
+
+      - name: Uninstall chart
+        if: always()
+        run: |
+          helm uninstall test-release --namespace default || true
+
+  version-check:
+    name: Version Consistency
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Get PR chart version
+        id: pr_version
+        run: |
+          VERSION=$(grep "^version:" save-the-elephant/Chart.yaml | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "PR Chart Version: $VERSION"
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get main chart version
+        id: main_version
+        run: |
+          VERSION=$(grep "^version:" save-the-elephant/Chart.yaml | awk '{print $2}')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Main Chart Version: $VERSION"
+
+      - name: Compare versions
+        run: |
+          PR_VERSION="${{ steps.pr_version.outputs.version }}"
+          MAIN_VERSION="${{ steps.main_version.outputs.version }}"
+
+          echo "Main version: $MAIN_VERSION"
+          echo "PR version: $PR_VERSION"
+
+          # Check if versions are different for non-release PRs
+          if [[ "${{ github.head_ref }}" != release/* ]]; then
+            if [ "$PR_VERSION" != "$MAIN_VERSION" ]; then
+              echo "⚠️  Warning: Chart version changed in non-release branch"
+              echo "Version should only be bumped in release/* branches"
+              echo "Current: $MAIN_VERSION → PR: $PR_VERSION"
+              exit 1
+            fi
+            echo "✅ Chart version unchanged (correct for non-release PR)"
+          else
+            if [ "$PR_VERSION" == "$MAIN_VERSION" ]; then
+              echo "❌ Chart version must be bumped for release branches"
+              exit 1
+            fi
+            echo "✅ Chart version bumped: $MAIN_VERSION → $PR_VERSION"
+          fi
+
+  summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [lint, template, install-test, version-check]
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || \
+             [ "${{ needs.template.result }}" != "success" ] || \
+             [ "${{ needs.install-test.result }}" != "success" ] || \
+             [ "${{ needs.version-check.result }}" != "success" ]; then
+            echo "❌ One or more validation checks failed"
+            exit 1
+          fi
+          echo "✅ All validation checks passed!"

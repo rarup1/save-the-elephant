@@ -364,7 +364,13 @@ Before submitting a PR, ensure:
    - Update values.yaml comments
    - Add examples if needed
 
-**Note:** Automated CI/CD testing and linting will be added soon. Currently, linting and validation will happen during the PR review process.
+**Automated Validation:** All PRs are automatically validated with:
+- Helm chart linting
+- Template rendering tests (basic, replication, backup scenarios)
+- Installation test on kind cluster
+- Version consistency checks
+
+These checks must pass before your PR can be merged. You'll see the status of these checks in your PR.
 
 ### Commit Message Guidelines
 
