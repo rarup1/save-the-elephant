@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Comprehensive contribution guidelines (CONTRIBUTING.md)
-- CHANGELOG.md
+---
 
-### Changed
-- Updated testing procedures in CONTRIBUTING.md
+## [0.2.1] - 2025-11-20
 
 ### Fixed
 - Added `podLabels` support to backup CronJob template to match StatefulSet behavior
+
+### Changed
+- Minor documentation fix in CONTRIBUTING.md (Supporting → Supported)
 
 ---
 
@@ -60,6 +60,7 @@ Initial release.
 
 ---
 
-[Unreleased]: https://github.com/rarup1/save-the-elephant/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/rarup1/save-the-elephant/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/rarup1/save-the-elephant/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rarup1/save-the-elephant/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rarup1/save-the-elephant/releases/tag/v0.1.0

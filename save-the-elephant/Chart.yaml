@@ -2,7 +2,7 @@ apiVersion: v2
 name: save-the-elephant
 description: A PostgreSQL Helm chart with S3 backup capabilities and optional replication
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "17.4"
 icon: https://www.postgresql.org/media/img/about/press/elephant.png
 keywords:
