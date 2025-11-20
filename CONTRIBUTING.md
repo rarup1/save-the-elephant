@@ -43,7 +43,7 @@ All branches must use one of the following prefixes:
 | `hotfix/` | Urgent production fixes | `hotfix/security-patch` |
 | `release/` | Release preparation branches | `release/v0.3.0` |
 
-### Supporting Prefixes
+### Supported Prefixes
 
 | Prefix | Purpose | Example |
 |--------|---------|---------|

@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Updated testing procedures in CONTRIBUTING.md
 
+### Fixed
+- Added `podLabels` support to backup CronJob template to match StatefulSet behavior
+
 ---
 
 ## [0.2.0] - 2025-10-22

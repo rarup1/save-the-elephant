@@ -23,6 +23,9 @@ spec:
           labels:
             {{- include "save-the-elephant.selectorLabels" . | nindent 12 }}
             app.kubernetes.io/component: backup
+            {{- with .Values.podLabels }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
         spec:
           serviceAccountName: {{ include "save-the-elephant.serviceAccountName" . }}
           restartPolicy: OnFailure
