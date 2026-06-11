@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-06-11
+
+### Added
+- `backup.databases` list parameter — spawns one backup container per database in the CronJob pod, running in parallel
+- `backup.database` single-override parameter — overrides `postgresql.auth.database` for the backup job without affecting the main PostgreSQL config
+
+### Changed
+- Extracted shared backup container env vars into a `save-the-elephant.backupContainerEnv` helper to avoid duplication across per-database containers
+
+---
+
 ## [0.2.1] - 2025-11-20
 
 ### Fixed
