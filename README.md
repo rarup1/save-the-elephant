@@ -117,6 +117,27 @@ backup:
 
 **Note:** Backup retention is managed via S3 bucket lifecycle policies, not within the Helm chart. Configure your S3 bucket with lifecycle rules to automatically expire old backups.
 
+#### Backing up multiple databases
+
+Set `backup.databases` to a list of database names. The CronJob will spawn one container per database, all running in parallel within the same job pod:
+
+```yaml
+backup:
+  enabled: true
+  databases:
+    - app
+    - analytics
+    - reporting
+```
+
+To back up a single database that differs from `postgresql.auth.database`, use `backup.database`:
+
+```yaml
+backup:
+  enabled: true
+  database: app
+```
+
 ### Enable Replication
 
 ```yaml
@@ -340,6 +361,8 @@ The backup image version automatically matches your PostgreSQL major version (e.
 | `backup.successfulJobsHistoryLimit` | Successful jobs to retain | `3` |
 | `backup.failedJobsHistoryLimit` | Failed jobs to retain | `1` |
 | `backup.ttlSecondsAfterFinished` | Time in seconds before completed jobs are deleted | `300` |
+| `backup.database` | Single database to back up. Overrides `postgresql.auth.database` when set | `""` |
+| `backup.databases` | List of databases to back up. Takes precedence over `backup.database`; spawns one container per database in the CronJob pod | `[]` |
 | `backup.s3.bucket` | S3 bucket name | `"postgres-backups"` |
 | `backup.s3.region` | S3 region | `"us-east-1"` |
 | `backup.s3.endpoint` | S3 endpoint (for MinIO, etc) | `""` |
