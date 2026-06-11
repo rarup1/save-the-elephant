@@ -123,6 +123,19 @@ backup:
   # 300 seconds = 5 minutes
   ttlSecondsAfterFinished: 300
 
+  # Database(s) to back up.
+  # - 'databases' (list) takes precedence when set; values are joined as a comma-separated string
+  #   passed to the backup container as POSTGRES_DATABASE.
+  # - 'database' (string) is a single override; falls back to postgresql.auth.database when empty.
+  # Example (multiple):
+  #   databases:
+  #     - app
+  #     - analytics
+  # Example (single override):
+  #   database: app
+  database: ""
+  databases: []
+
   # S3 configuration
   s3:
     # S3 bucket name
