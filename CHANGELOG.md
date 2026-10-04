@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-10-04
+
+### Added
+- TLS/SSL support for PostgreSQL client connections via `postgresql.tls.{enabled,secretName,requireSSL}` — point at an existing `kubernetes.io/tls` secret, no CRDs or new cert-management surface required
+- `requireSSL: true` switches `pg_hba.conf` network rules to `hostssl`-only and propagates `PGSSLMODE=require` to the backup CronJob and replication init container
+- `examples/tls.values.yaml` example configuration
+- `tls-validation` CI job and a TLS scenario in the template-render test matrix
+
+### Changed
+- TLS settings are applied once via `postgresql.conf` on first initialization, and idempotently upserted into `postgresql.auto.conf` on every start for data directories initialized before TLS was enabled
+
+---
+
 ## [0.3.0] - 2026-06-11
 
 ### Added
