@@ -21,6 +21,9 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap-postgresql.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- if .Values.postgresql.tls.enabled }}
+        checksum/tls-secret: {{ lookup "v1" "Secret" .Release.Namespace .Values.postgresql.tls.secretName | toJson | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -35,6 +38,28 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
+        {{- if .Values.postgresql.tls.enabled }}
+        - name: tls-setup
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              cp /tls-secret/tls.crt /tls/tls.crt
+              cp /tls-secret/tls.key /tls/tls.key
+              chmod 644 /tls/tls.crt
+              chmod 600 /tls/tls.key
+          volumeMounts:
+            - name: tls-secret
+              mountPath: /tls-secret
+              readOnly: true
+            - name: tls
+              mountPath: /tls
+        {{- end }}
         {{- if .Values.replication.enabled }}
         - name: init-replication
           image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
@@ -112,6 +137,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "save-the-elephant.secretName" . }}
                   key: replication-password
+            {{- if and .Values.postgresql.tls.enabled .Values.postgresql.tls.requireSSL }}
+            - name: PGSSLMODE
+              value: "require"
+            {{- end }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
@@ -125,6 +154,25 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
           imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
+          {{- if .Values.postgresql.tls.enabled }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              # New data directories pick up SSL settings from the 00-setup-tls.sh
+              # initdb.d script instead, since it only runs once on first init.
+              if [ -f "$PGDATA/PG_VERSION" ]; then
+                echo "Existing data directory detected, applying TLS settings to postgresql.auto.conf"
+                sed -i -e '/^ssl /d' -e '/^ssl_cert_file/d' -e '/^ssl_key_file/d' "$PGDATA/postgresql.auto.conf" 2>/dev/null || true
+                {
+                  echo "ssl = on"
+                  echo "ssl_cert_file = '/var/lib/postgresql/tls/tls.crt'"
+                  echo "ssl_key_file = '/var/lib/postgresql/tls/tls.key'"
+                } >> "$PGDATA/postgresql.auto.conf"
+              fi
+              exec docker-entrypoint.sh postgres
+          {{- end }}
           ports:
             - name: postgresql
               containerPort: 5432
@@ -163,6 +211,14 @@ spec:
             - name: hba-config
               mountPath: /docker-entrypoint-initdb.d/00-setup-hba.sh
               subPath: 00-setup-hba.sh
+            {{- end }}
+            {{- if .Values.postgresql.tls.enabled }}
+            - name: tls-init-script
+              mountPath: /docker-entrypoint-initdb.d/00-setup-tls.sh
+              subPath: 00-setup-tls.sh
+            - name: tls
+              mountPath: /var/lib/postgresql/tls
+              readOnly: true
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -203,6 +259,17 @@ spec:
           configMap:
             name: {{ include "save-the-elephant.fullname" . }}-hba
             defaultMode: 0755
+        {{- end }}
+        {{- if .Values.postgresql.tls.enabled }}
+        - name: tls-init-script
+          configMap:
+            name: {{ include "save-the-elephant.fullname" . }}-tls-init
+            defaultMode: 0755
+        - name: tls-secret
+          secret:
+            secretName: {{ .Values.postgresql.tls.secretName }}
+        - name: tls
+          emptyDir: {}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

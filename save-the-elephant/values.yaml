@@ -50,6 +50,20 @@ postgresql:
     # - trust: Allows connections without password (use only in secure test environments)
     authMode: "password"
 
+  # TLS/SSL configuration for encrypting client <-> server connections
+  tls:
+    # Enable SSL. Requires secretName to be set.
+    enabled: false
+    # Name of an existing Secret of type kubernetes.io/tls (keys: tls.crt, tls.key)
+    # containing the server certificate and private key.
+    # Note: the cert does not need a SAN matching the in-cluster service hostname -
+    # Postgres will still encrypt connections, but clients should use sslmode=require
+    # rather than verify-full unless the cert actually covers that hostname.
+    secretName: ""
+    # When true, network connections in pg_hba.conf require SSL (hostssl only).
+    # When false, SSL is available but plaintext connections are still accepted.
+    requireSSL: false
+
   # Resource limits and requests
   resources:
     limits:
