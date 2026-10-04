@@ -1,0 +1,19 @@
+# PostgreSQL with TLS/SSL enabled
+# Usage: helm install my-postgres save-the-elephant/save-the-elephant -f tls.values.yaml
+#
+# Prerequisite: create a kubernetes.io/tls secret containing the server cert/key
+# in the same namespace as this release, e.g.:
+#   kubectl create secret tls my-postgresql-tls --cert=server.crt --key=server.key
+
+postgresql:
+  auth:
+    username: "postgres"
+    password: "securePassword123"
+    database: "production_db"
+
+  tls:
+    enabled: true
+    secretName: "my-postgresql-tls"
+    # Reject plaintext connections entirely (hostssl only in pg_hba.conf).
+    # Set to false to make SSL available without requiring it.
+    requireSSL: true

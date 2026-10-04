@@ -1,0 +1,30 @@
+{{- include "save-the-elephant.validateTls" . }}
+{{- if .Values.postgresql.tls.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "save-the-elephant.fullname" . }}-tls-init
+  labels:
+    {{- include "save-the-elephant.labels" . | nindent 4 }}
+data:
+  00-setup-tls.sh: |
+    #!/bin/bash
+    set -e
+
+    # This script runs only during first initialization (empty data directory),
+    # via the PostgreSQL docker-entrypoint-initdb.d mechanism. Existing data
+    # directories are handled instead by the command wrapper in the StatefulSet,
+    # since initdb.d scripts never run again once a cluster is initialized.
+
+    echo "Enabling SSL in postgresql.conf"
+
+    {
+      echo ""
+      echo "# TLS/SSL settings"
+      echo "ssl = on"
+      echo "ssl_cert_file = '/var/lib/postgresql/tls/tls.crt'"
+      echo "ssl_key_file = '/var/lib/postgresql/tls/tls.key'"
+    } >> "$PGDATA/postgresql.conf"
+
+    echo "SSL configuration complete"
+{{- end }}

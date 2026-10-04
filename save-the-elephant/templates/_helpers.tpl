@@ -110,6 +110,16 @@ Get the secret name for S3 credentials
 {{- end }}
 
 {{/*
+Validate TLS configuration. Fails the template render with a clear error
+instead of producing a StatefulSet that can never start.
+*/}}
+{{- define "save-the-elephant.validateTls" -}}
+{{- if and .Values.postgresql.tls.enabled (not .Values.postgresql.tls.secretName) }}
+{{- fail "postgresql.tls.secretName is required when postgresql.tls.enabled is true" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Shared backup container env vars (all except POSTGRES_DATABASE, which varies per container).
 Caller must supply root context — pass $ inside range, . outside.
 */}}
@@ -158,6 +168,10 @@ Caller must supply root context — pass $ inside range, . outside.
     secretKeyRef:
       name: {{ include "save-the-elephant.secretName" . }}
       key: postgres-password
+{{- if and .Values.postgresql.tls.enabled .Values.postgresql.tls.requireSSL }}
+- name: PGSSLMODE
+  value: "require"
+{{- end }}
 {{- end }}
 
 {{/*

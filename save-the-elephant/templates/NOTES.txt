@@ -20,6 +20,13 @@ PostgreSQL can be accessed via port {{ .Values.service.primary.port }} on the fo
 
 {{- end }}
 
+{{- if .Values.postgresql.tls.enabled }}
+
+TLS is enabled{{ if .Values.postgresql.tls.requireSSL }} and required{{ end }} for network connections.
+Connect with sslmode=require (the certificate may not match the in-cluster hostname,
+so sslmode=verify-full is not guaranteed to work unless it does).
+{{- end }}
+
 To get the password for the "{{ .Values.postgresql.auth.username }}" user, run:
 
 {{- if .Values.postgresql.auth.existingSecret }}

@@ -164,6 +164,28 @@ postgresql:
 
 When `authMode: "password"` is set, all network connections (including replication) require password authentication. The chart automatically configures proper authentication for replication users when replication is enabled.
 
+### Enable TLS/SSL
+
+Encrypt client connections by pointing the chart at an existing TLS secret (type `kubernetes.io/tls`, containing `tls.crt` and `tls.key`):
+
+```yaml
+postgresql:
+  tls:
+    enabled: true
+    secretName: "my-postgresql-tls"
+    requireSSL: true   # reject plaintext connections (hostssl only in pg_hba.conf)
+```
+
+```bash
+kubectl create secret tls my-postgresql-tls --cert=server.crt --key=server.key
+```
+
+**Notes:**
+- The certificate does **not** need a SAN matching the in-cluster service hostname (`<release>-postgresql.<namespace>.svc.cluster.local`). If you reuse a certificate issued for something else (e.g. an Ingress wildcard cert like `*.prod.example.com`), connections are still encrypted — just connect with `sslmode=require` rather than `sslmode=verify-full`, since the hostname won't match and verification will fail.
+- Rotating the secret's contents triggers a rolling restart of the StatefulSet automatically (via a checksum pod annotation) on the next `helm upgrade`. There is no live/hitless reload — the pod must restart to pick up a new certificate.
+- On an existing PVC (a cluster that was already initialized before `tls.enabled` was turned on), the chart applies the SSL settings to `postgresql.auto.conf` on every pod start. On a brand-new PVC, they're applied once via `postgresql.conf` during first initialization.
+- When `requireSSL: true`, the backup CronJob and (if replication is enabled) the replica's `pg_basebackup` connection automatically set `PGSSLMODE=require` so they aren't locked out by the `hostssl`-only `pg_hba.conf` rules.
+
 ### Custom Resources
 
 ```yaml
@@ -319,6 +341,9 @@ kubectl delete pvc -l app.kubernetes.io/name=save-the-elephant
 | `postgresql.config.walKeepSize` | WAL keep size | `"1GB"` |
 | `postgresql.hba.enabled` | Enable custom pg_hba.conf configuration | `true` |
 | `postgresql.hba.authMode` | Authentication mode: `password` (SCRAM-SHA-256) or `trust` (no password) | `"password"` |
+| `postgresql.tls.enabled` | Enable TLS/SSL for client connections | `false` |
+| `postgresql.tls.secretName` | Existing `kubernetes.io/tls` secret (keys: `tls.crt`, `tls.key`). Required when `tls.enabled` is `true` | `""` |
+| `postgresql.tls.requireSSL` | Reject plaintext connections (`hostssl` only in pg_hba.conf) | `false` |
 | `postgresql.resources.limits.cpu` | CPU limit | `1000m` |
 | `postgresql.resources.limits.memory` | Memory limit | `1Gi` |
 | `postgresql.resources.requests.cpu` | CPU request | `250m` |

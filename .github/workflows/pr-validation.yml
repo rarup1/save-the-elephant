@@ -54,6 +54,8 @@ jobs:
             values: "-f examples/replication.values.yaml"
           - name: "With Backup"
             values: "-f examples/replication-and-backup.values.yaml"
+          - name: "With TLS"
+            values: "-f examples/tls.values.yaml"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,6 +70,27 @@ jobs:
           echo "Testing scenario: ${{ matrix.scenario.name }}"
           helm template test-release save-the-elephant/ ${{ matrix.scenario.values }} > /dev/null
           echo "✅ Template rendered successfully for ${{ matrix.scenario.name }}"
+
+  tls-validation:
+    name: TLS Configuration Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.12.0
+
+      - name: TLS enabled without secretName must fail
+        run: |
+          if helm template test-release save-the-elephant/ --set postgresql.tls.enabled=true > /dev/null 2>/tmp/tls-error.log; then
+            echo "❌ Expected template rendering to fail when tls.enabled=true with no secretName"
+            exit 1
+          fi
+          grep -q "postgresql.tls.secretName is required" /tmp/tls-error.log
+          echo "✅ Template correctly fails when secretName is missing"
 
   install-test:
     name: Test Deployment on Kind Cluster
@@ -167,7 +190,7 @@ jobs:
   summary:
     name: Validation Summary
     runs-on: ubuntu-latest
-    needs: [lint, template, install-test, version-check]
+    needs: [lint, template, tls-validation, install-test, version-check]
     if: always()
     steps:
       - name: Check results
@@ -175,18 +198,21 @@ jobs:
           # Check each job - allow skipped (for conditional jobs like version-check)
           LINT="${{ needs.lint.result }}"
           TEMPLATE="${{ needs.template.result }}"
+          TLS="${{ needs.tls-validation.result }}"
           INSTALL="${{ needs.install-test.result }}"
           VERSION="${{ needs.version-check.result }}"
 
           echo "Job Results:"
           echo "  Lint: $LINT"
           echo "  Template: $TEMPLATE"
+          echo "  TLS Validation: $TLS"
           echo "  Install Test: $INSTALL"
           echo "  Version Check: $VERSION"
 
           # Fail if any job failed (skipped is OK for conditional jobs)
           if [ "$LINT" == "failure" ] || \
              [ "$TEMPLATE" == "failure" ] || \
+             [ "$TLS" == "failure" ] || \
              [ "$INSTALL" == "failure" ] || \
              [ "$VERSION" == "failure" ]; then
             echo "❌ One or more validation checks failed"
